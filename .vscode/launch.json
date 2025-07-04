@@ -1,0 +1,46 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "flutter",
+      "request": "launch",
+      "type": "dart"
+    },
+    {
+      "name": "flutter (profile mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "flutter (release mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release"
+    },
+    {
+      "name": "flutter (with dart-define)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define=Dart.vm.product=true"
+      ]
+    },
+    {
+      "name": "flutter (specific device with dart-define)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "47E0C124-8D6C-4FD9-B59E-FBE7A2296872",
+      "args": [
+        "--dart-define=Dart.vm.product=true"
+      ]
+    },
+    {
+      "name": "flutter (Flutter release mode)",
+      "program": "lib/main.dart",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release"
+    }
+  ]
+}
