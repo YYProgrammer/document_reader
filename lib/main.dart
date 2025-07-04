@@ -149,6 +149,7 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
   String _translatedContent = '';
   bool _isTranslating = false;
   String _translationError = '';
+  bool _isTranslationPanelVisible = false; // 默认隐藏翻译面板
 
   // 面板宽度控制
   double _leftPanelWidth = 300.0;
@@ -354,94 +355,150 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
             },
           ),
           // 中间原文件阅读面板
-          Container(
-            width: _centerPanelWidth,
-            decoration: const BoxDecoration(color: Color(0xFF1E1E1E)),
-            child: Column(
-              children: [
-                // 标题栏
-                Container(
-                  height: 60,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2D2D2D),
-                    border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
-                  ),
-                  child: const Row(
+          _isTranslationPanelVisible
+              ? Container(
+                width: _centerPanelWidth,
+                decoration: const BoxDecoration(color: Color(0xFF1E1E1E)),
+                child: Column(
+                  children: [
+                    // 标题栏
+                    Container(
+                      height: 60,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF2D2D2D),
+                        border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.article_outlined, color: Color(0xFF0A84FF)),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '原文',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.translate, color: Color(0xFF0A84FF)),
+                            onPressed: () {
+                              setState(() {
+                                _isTranslationPanelVisible = !_isTranslationPanelVisible;
+                              });
+                            },
+                            tooltip: '隐藏翻译面板',
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 原文内容
+                    Expanded(child: _buildOriginalContentArea()),
+                  ],
+                ),
+              )
+              : Expanded(
+                child: Container(
+                  decoration: const BoxDecoration(color: Color(0xFF1E1E1E)),
+                  child: Column(
                     children: [
-                      Icon(Icons.article_outlined, color: Color(0xFF0A84FF)),
-                      SizedBox(width: 8),
-                      Text('原文', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF))),
+                      // 标题栏
+                      Container(
+                        height: 60,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2D2D2D),
+                          border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.article_outlined, color: Color(0xFF0A84FF)),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '原文',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.translate, color: Color(0xFF0A84FF)),
+                              onPressed: () {
+                                setState(() {
+                                  _isTranslationPanelVisible = !_isTranslationPanelVisible;
+                                });
+                              },
+                              tooltip: '显示翻译面板',
+                            ),
+                          ],
+                        ),
+                      ),
+                      // 原文内容
+                      Expanded(child: _buildOriginalContentArea()),
                     ],
                   ),
                 ),
-                // 原文内容
-                Expanded(child: _buildOriginalContentArea()),
-              ],
+              ),
+          // 右侧分割线（仅在翻译面板可见时显示）
+          if (_isTranslationPanelVisible)
+            DraggableResizerWidget(
+              initialWidth: _centerPanelWidth,
+              minWidth: _minPanelWidth,
+              maxWidth: _maxPanelWidth,
+              onWidthChanged: (newWidth) {
+                setState(() {
+                  _centerPanelWidth = newWidth;
+                });
+              },
             ),
-          ),
-          // 右侧分割线
-          DraggableResizerWidget(
-            initialWidth: _centerPanelWidth,
-            minWidth: _minPanelWidth,
-            maxWidth: _maxPanelWidth,
-            onWidthChanged: (newWidth) {
-              setState(() {
-                _centerPanelWidth = newWidth;
-              });
-            },
-          ),
-          // 右侧翻译面板
-          Expanded(
-            child: Container(
-              decoration: const BoxDecoration(color: Color(0xFF1E1E1E)),
-              child: Column(
-                children: [
-                  // 标题栏
-                  Container(
-                    height: 60,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF2D2D2D),
-                      border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.translate, color: Color(0xFF0A84FF)),
-                        const SizedBox(width: 8),
-                        const Text(
-                          '翻译',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                        ),
-                        const Spacer(),
-                        if (_selectedFile != null)
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0A84FF),
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: _isTranslating ? null : _translateContent,
-                            child:
-                                _isTranslating
-                                    ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
-                                    : const Text('翻译'),
+          // 右侧翻译面板（仅在可见时显示）
+          if (_isTranslationPanelVisible)
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(color: Color(0xFF1E1E1E)),
+                child: Column(
+                  children: [
+                    // 标题栏
+                    Container(
+                      height: 60,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF2D2D2D),
+                        border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.translate, color: Color(0xFF0A84FF)),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '翻译',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
                           ),
-                      ],
+                          const Spacer(),
+                          if (_selectedFile != null)
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0A84FF),
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: _isTranslating ? null : _translateContent,
+                              child:
+                                  _isTranslating
+                                      ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      )
+                                      : const Text('翻译'),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  // 翻译内容
-                  Expanded(child: _buildTranslationArea()),
-                ],
+                    // 翻译内容
+                    Expanded(child: _buildTranslationArea()),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
