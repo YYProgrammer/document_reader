@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
-import 'dart:io';
-import 'dart:convert';
 import 'package:path/path.dart' as path;
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
+import 'translator/translator_view.dart';
+import 'history/history_view.dart';
 
 void main() {
   runApp(const MyApp());
@@ -33,47 +31,6 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF1E1E1E),
       ),
       home: const DocumentReaderScreen(),
-    );
-  }
-}
-
-// 文件历史记录数据结构
-class FileHistoryItem {
-  final String id;
-  final String fileName;
-  final String filePath;
-  final String content;
-  final String extension;
-  final DateTime lastModified;
-
-  FileHistoryItem({
-    required this.id,
-    required this.fileName,
-    required this.filePath,
-    required this.content,
-    required this.extension,
-    required this.lastModified,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'fileName': fileName,
-      'filePath': filePath,
-      'content': content,
-      'extension': extension,
-      'lastModified': lastModified.toIso8601String(),
-    };
-  }
-
-  static FileHistoryItem fromJson(Map<String, dynamic> json) {
-    return FileHistoryItem(
-      id: json['id'],
-      fileName: json['fileName'],
-      filePath: json['filePath'],
-      content: json['content'],
-      extension: json['extension'],
-      lastModified: DateTime.parse(json['lastModified']),
     );
   }
 }
@@ -141,14 +98,10 @@ class DocumentReaderScreen extends StatefulWidget {
 class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
   bool _isDragging = false;
   String _errorMessage = '';
-  List<FileHistoryItem> _fileHistory = [];
   FileHistoryItem? _selectedFile;
-  bool _isLoading = true;
+  final GlobalKey<State<HistoryView>> _historyViewKey = GlobalKey<State<HistoryView>>();
 
-  // 翻译相关状态
-  String _translatedContent = '';
-  bool _isTranslating = false;
-  String _translationError = '';
+  // 翻译面板可见性状态
   bool _isTranslationPanelVisible = false; // 默认隐藏翻译面板
 
   // 面板宽度控制
@@ -157,191 +110,43 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
   final double _minPanelWidth = 200.0;
   final double _maxPanelWidth = 800.0;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadFileHistory();
-  }
-
-  // 加载文件历史记录
-  Future<void> _loadFileHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final historyJson = prefs.getString('file_history');
-      if (historyJson != null) {
-        final List<dynamic> historyList = json.decode(historyJson);
-        setState(() {
-          _fileHistory = historyList.map((item) => FileHistoryItem.fromJson(item)).toList();
-          _fileHistory.sort((a, b) => b.lastModified.compareTo(a.lastModified));
-          if (_fileHistory.isNotEmpty) {
-            _selectedFile = _fileHistory.first;
-          }
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = '加载文件历史失败：$e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  // 保存文件历史记录
-  Future<void> _saveFileHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final historyJson = json.encode(_fileHistory.map((item) => item.toJson()).toList());
-      await prefs.setString('file_history', historyJson);
-    } catch (e) {
-      setState(() {
-        _errorMessage = '保存文件历史失败：$e';
-      });
-    }
-  }
-
-  // 添加文件到历史记录
-  void _addFileToHistory(FileHistoryItem fileItem) {
+  // 处理文件选择
+  void _handleFileSelected(FileHistoryItem fileItem) {
     setState(() {
-      // 移除已存在的相同文件
-      _fileHistory.removeWhere((item) => item.filePath == fileItem.filePath);
-      // 添加新文件到最前面
-      _fileHistory.insert(0, fileItem);
-      // 限制历史记录数量
-      if (_fileHistory.length > 50) {
-        _fileHistory = _fileHistory.take(50).toList();
-      }
       _selectedFile = fileItem;
       _errorMessage = '';
-      _translatedContent = '';
-      _translationError = '';
     });
-    _saveFileHistory();
   }
 
-  // 删除文件历史记录
-  void _removeFileFromHistory(String fileId) {
+  // 处理文件添加
+  void _handleFileAdded(FileHistoryItem fileItem) {
     setState(() {
-      _fileHistory.removeWhere((item) => item.id == fileId);
-      if (_selectedFile?.id == fileId) {
-        _selectedFile = _fileHistory.isNotEmpty ? _fileHistory.first : null;
-        _translatedContent = '';
-        _translationError = '';
-      }
+      _selectedFile = fileItem;
+      _errorMessage = '';
     });
-    _saveFileHistory();
   }
 
-  // 翻译文件内容
-  Future<void> _translateContent() async {
-    if (_selectedFile == null) return;
-
+  // 处理错误消息
+  void _handleError(String errorMessage) {
     setState(() {
-      _isTranslating = true;
-      _translationError = '';
+      _errorMessage = errorMessage;
     });
-
-    try {
-      final response = await http
-          .post(
-            Uri.parse('https://cerebras-proxy.brain.loocaa.com:1443/v1/chat/completions'),
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer DlJYSkMVj1x4zoe8jZnjvxfHG6z5yGxK',
-            },
-            body: json.encode({
-              "model": "llama-3.3-70b",
-              "messages": [
-                {
-                  "role": "system",
-                  "content": "你是一个资深的中英文翻译官，你非常擅长把英文内容翻译为优雅的中文表达。\n现在，你需要根据用户发送的内容，进行翻译，只翻译用户发的内容，不要增加任何额外的文字",
-                },
-                {"role": "user", "content": _selectedFile!.content},
-              ],
-            }),
-          )
-          .timeout(const Duration(seconds: 60));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final translatedText = data['choices'][0]['message']['content'];
-        setState(() {
-          _translatedContent = translatedText;
-          _isTranslating = false;
-        });
-      } else {
-        setState(() {
-          _translationError = '翻译失败：HTTP ${response.statusCode}';
-          _isTranslating = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        if (e.toString().contains('SocketException') || e.toString().contains('Connection failed')) {
-          _translationError = '网络连接失败，请检查网络设置和防火墙配置';
-        } else if (e.toString().contains('TimeoutException')) {
-          _translationError = '请求超时，请稍后重试';
-        } else {
-          _translationError = '翻译失败：$e';
-        }
-        _isTranslating = false;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF1E1E1E),
-        body: Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0A84FF)))),
-      );
-    }
-
-    final screenWidth = MediaQuery.of(context).size.width;
-    final rightPanelWidth = screenWidth - _leftPanelWidth - _centerPanelWidth - 16; // 16 for dividers
-
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E1E),
       body: Row(
         children: [
           // 左侧文件历史面板
-          Container(
+          HistoryView(
+            key: _historyViewKey,
             width: _leftPanelWidth,
-            decoration: const BoxDecoration(
-              color: Color(0xFF2D2D2D),
-              border: Border(right: BorderSide(color: Color(0xFF3D3D3D))),
-            ),
-            child: Column(
-              children: [
-                // 标题栏
-                Container(
-                  height: 60,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF323232),
-                    border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.folder_outlined, color: Color(0xFF0A84FF)),
-                      SizedBox(width: 8),
-                      Text(
-                        '文档历史',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                      ),
-                    ],
-                  ),
-                ),
-                // 文件列表
-                Expanded(child: _buildFileHistoryList()),
-              ],
-            ),
+            selectedFile: _selectedFile,
+            onFileSelected: _handleFileSelected,
+            onFileAdded: _handleFileAdded,
+            onError: _handleError,
           ),
           // 左侧分割线
           DraggableResizerWidget(
@@ -450,147 +255,18 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
           // 右侧翻译面板（仅在可见时显示）
           if (_isTranslationPanelVisible)
             Expanded(
-              child: Container(
-                decoration: const BoxDecoration(color: Color(0xFF1E1E1E)),
-                child: Column(
-                  children: [
-                    // 标题栏
-                    Container(
-                      height: 60,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2D2D2D),
-                        border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.translate, color: Color(0xFF0A84FF)),
-                          const SizedBox(width: 8),
-                          const Text(
-                            '翻译',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                          ),
-                          const Spacer(),
-                          if (_selectedFile != null)
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0A84FF),
-                                foregroundColor: Colors.white,
-                              ),
-                              onPressed: _isTranslating ? null : _translateContent,
-                              child:
-                                  _isTranslating
-                                      ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        ),
-                                      )
-                                      : const Text('翻译'),
-                            ),
-                        ],
-                      ),
-                    ),
-                    // 翻译内容
-                    Expanded(child: _buildTranslationArea()),
-                  ],
-                ),
+              child: TranslatorView(
+                selectedFile: _selectedFile,
+                isVisible: _isTranslationPanelVisible,
+                onVisibilityToggle: () {
+                  setState(() {
+                    _isTranslationPanelVisible = !_isTranslationPanelVisible;
+                  });
+                },
               ),
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFileHistoryList() {
-    if (_fileHistory.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.insert_drive_file_outlined, size: 48, color: Color(0xFF8E8E93)),
-            SizedBox(height: 16),
-            Text('暂无文档历史', style: TextStyle(fontSize: 16, color: Color(0xFF8E8E93))),
-            SizedBox(height: 8),
-            Text('拖拽文件到中间区域开始使用', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _fileHistory.length,
-      itemBuilder: (context, index) {
-        final fileItem = _fileHistory[index];
-        final isSelected = _selectedFile?.id == fileItem.id;
-
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0A84FF).withOpacity(0.2) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: ListTile(
-            leading: Icon(
-              fileItem.extension == '.md' ? Icons.article : Icons.description,
-              color: isSelected ? const Color(0xFF0A84FF) : const Color(0xFF8E8E93),
-            ),
-            title: Text(
-              fileItem.fileName,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFF0A84FF) : const Color(0xFFFFFFFF),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(
-              _formatDateTime(fileItem.lastModified),
-              style: TextStyle(
-                fontSize: 12,
-                color: isSelected ? const Color(0xFF0A84FF).withOpacity(0.8) : const Color(0xFFA0A0A0),
-              ),
-            ),
-            trailing: PopupMenuButton<String>(
-              icon: Icon(
-                Icons.more_vert,
-                size: 16,
-                color: isSelected ? const Color(0xFF0A84FF) : const Color(0xFF8E8E93),
-              ),
-              color: const Color(0xFF2D2D2D),
-              onSelected: (value) {
-                if (value == 'delete') {
-                  _removeFileFromHistory(fileItem.id);
-                }
-              },
-              itemBuilder:
-                  (context) => [
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline, size: 16, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('删除', style: TextStyle(color: Colors.red)),
-                        ],
-                      ),
-                    ),
-                  ],
-            ),
-            onTap: () {
-              setState(() {
-                _selectedFile = fileItem;
-                _errorMessage = '';
-                _translatedContent = '';
-                _translationError = '';
-              });
-            },
-          ),
-        );
-      },
     );
   }
 
@@ -677,7 +353,7 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '最后修改：${_formatDateTime(_selectedFile!.lastModified)}',
+                        '最后修改：${_selectedFile!.lastModified.toString().split('.')[0]}',
                         style: const TextStyle(fontSize: 12, color: Color(0xFFA0A0A0)),
                       ),
                     ],
@@ -712,118 +388,6 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
           ),
           const SizedBox(height: 16),
           const Text('支持的格式：TXT、MD', style: TextStyle(fontSize: 16, color: Color(0xFFA0A0A0))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTranslationArea() {
-    if (_translationError.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 64),
-            const SizedBox(height: 16),
-            Text(
-              _translationError,
-              style: const TextStyle(fontSize: 16, color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A84FF), foregroundColor: Colors.white),
-              onPressed: () {
-                setState(() {
-                  _translationError = '';
-                });
-              },
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_translatedContent.isNotEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        child:
-            _selectedFile!.extension == '.md'
-                ? Markdown(
-                  data: _translatedContent,
-                  selectable: true,
-                  styleSheet: MarkdownStyleSheet(
-                    h1: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                    h2: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                    h3: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                    h4: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                    h5: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                    h6: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                    p: const TextStyle(fontSize: 16, height: 1.7, color: Color(0xFFE5E5E5)),
-                    code: const TextStyle(
-                      backgroundColor: Color(0xFF3D3D3D),
-                      fontFamily: 'Courier',
-                      fontSize: 14,
-                      color: Color(0xFFFF6B6B),
-                    ),
-                    codeblockDecoration: const BoxDecoration(
-                      color: Color(0xFF2D2D2D),
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                      border: Border.fromBorderSide(BorderSide(color: Color(0xFF3D3D3D))),
-                    ),
-                    blockquote: const TextStyle(color: Color(0xFFA0A0A0), fontStyle: FontStyle.italic),
-                    blockquoteDecoration: BoxDecoration(
-                      color: const Color(0xFF0A84FF).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: const Border(left: BorderSide(color: Color(0xFF0A84FF), width: 4)),
-                    ),
-                    listBullet: const TextStyle(color: Color(0xFFE5E5E5)),
-                    tableHead: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
-                    tableBody: const TextStyle(fontSize: 14, color: Color(0xFFE5E5E5)),
-                    tableBorder: const TableBorder(
-                      top: BorderSide(color: Color(0xFF3D3D3D)),
-                      bottom: BorderSide(color: Color(0xFF3D3D3D)),
-                      left: BorderSide(color: Color(0xFF3D3D3D)),
-                      right: BorderSide(color: Color(0xFF3D3D3D)),
-                      horizontalInside: BorderSide(color: Color(0xFF3D3D3D)),
-                      verticalInside: BorderSide(color: Color(0xFF3D3D3D)),
-                    ),
-                  ),
-                )
-                : SingleChildScrollView(
-                  child: SelectableText(
-                    _translatedContent,
-                    style: const TextStyle(fontSize: 16, height: 1.6, fontFamily: 'Courier', color: Color(0xFFE5E5E5)),
-                  ),
-                ),
-      );
-    }
-
-    if (_selectedFile == null) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.translate, size: 80, color: Color(0xFF8E8E93)),
-            SizedBox(height: 16),
-            Text('请先选择文件', style: TextStyle(fontSize: 18, color: Color(0xFF8E8E93))),
-            SizedBox(height: 8),
-            Text('然后点击翻译按钮进行翻译', style: TextStyle(fontSize: 14, color: Color(0xFFA0A0A0))),
-          ],
-        ),
-      );
-    }
-
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.translate, size: 80, color: Color(0xFF8E8E93)),
-          SizedBox(height: 16),
-          Text('点击翻译按钮开始翻译', style: TextStyle(fontSize: 18, color: Color(0xFF8E8E93))),
-          SizedBox(height: 8),
-          Text('翻译结果将在此处显示', style: TextStyle(fontSize: 14, color: Color(0xFFA0A0A0))),
         ],
       ),
     );
@@ -935,26 +499,15 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
         lastModified: DateTime.now(),
       );
 
-      _addFileToHistory(fileItem);
+      // 通过GlobalKey引用来添加文件到历史记录
+      final historyViewState = _historyViewKey.currentState;
+      if (historyViewState != null) {
+        (historyViewState as dynamic).addFileToHistory(fileItem);
+      }
     } catch (e) {
       setState(() {
         _errorMessage = '读取文件失败：$e';
       });
-    }
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays}天前';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}小时前';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}分钟前';
-    } else {
-      return '刚刚';
     }
   }
 }
