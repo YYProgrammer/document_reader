@@ -18,7 +18,19 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '文档阅读器',
-      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'PingFang SC', useMaterial3: true),
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF0A84FF), // macOS蓝色
+          secondary: Color(0xFF0A84FF),
+          surface: Color(0xFF1E1E1E), // 主背景色
+          onSurface: Color(0xFFFFFFFF), // 主文本色
+          onSecondary: Color(0xFFA0A0A0), // 次要文本色
+        ),
+        fontFamily: 'PingFang SC',
+        scaffoldBackgroundColor: const Color(0xFF1E1E1E),
+      ),
       home: const DocumentReaderScreen(),
     );
   }
@@ -157,18 +169,22 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Color(0xFF1E1E1E),
+        body: Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0A84FF)))),
+      );
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFF1E1E1E),
       body: Row(
         children: [
           // 左侧文件历史面板
           Container(
             width: 300,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              border: Border(right: BorderSide(color: Colors.grey.shade300)),
+            decoration: const BoxDecoration(
+              color: Color(0xFF2D2D2D), // 侧边栏背景
+              border: Border(right: BorderSide(color: Color(0xFF3D3D3D))), // 深灰色边框
             ),
             child: Column(
               children: [
@@ -176,15 +192,18 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
                 Container(
                   height: 60,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF323232), // 标题栏背景
+                    border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.folder_outlined, color: Colors.blue),
+                      Icon(Icons.folder_outlined, color: Color(0xFF0A84FF)),
                       SizedBox(width: 8),
-                      Text('文档历史', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Text(
+                        '文档历史',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+                      ),
                     ],
                   ),
                 ),
@@ -206,11 +225,11 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.insert_drive_file_outlined, size: 48, color: Colors.grey),
+            Icon(Icons.insert_drive_file_outlined, size: 48, color: Color(0xFF8E8E93)),
             SizedBox(height: 16),
-            Text('暂无文档历史', style: TextStyle(fontSize: 16, color: Colors.grey)),
+            Text('暂无文档历史', style: TextStyle(fontSize: 16, color: Color(0xFF8E8E93))),
             SizedBox(height: 8),
-            Text('拖拽文件到右侧区域开始使用', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            Text('拖拽文件到右侧区域开始使用', style: TextStyle(fontSize: 12, color: Color(0xFF8E8E93))),
           ],
         ),
       );
@@ -225,30 +244,38 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.shade100 : Colors.transparent,
+            color: isSelected ? const Color(0xFF0A84FF).withOpacity(0.2) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: ListTile(
             leading: Icon(
               fileItem.extension == '.md' ? Icons.article : Icons.description,
-              color: isSelected ? Colors.blue : Colors.grey.shade600,
+              color: isSelected ? const Color(0xFF0A84FF) : const Color(0xFF8E8E93),
             ),
             title: Text(
               fileItem.fileName,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.blue.shade800 : Colors.black87,
+                color: isSelected ? const Color(0xFF0A84FF) : const Color(0xFFFFFFFF),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
               _formatDateTime(fileItem.lastModified),
-              style: TextStyle(fontSize: 12, color: isSelected ? Colors.blue.shade600 : Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? const Color(0xFF0A84FF).withOpacity(0.8) : const Color(0xFFA0A0A0),
+              ),
             ),
             trailing: PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert, size: 16, color: isSelected ? Colors.blue.shade600 : Colors.grey.shade600),
+              icon: Icon(
+                Icons.more_vert,
+                size: 16,
+                color: isSelected ? const Color(0xFF0A84FF) : const Color(0xFF8E8E93),
+              ),
+              color: const Color(0xFF2D2D2D),
               onSelected: (value) {
                 if (value == 'delete') {
                   _removeFileFromHistory(fileItem.id);
@@ -299,8 +326,8 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
         width: double.infinity,
         height: double.infinity,
         decoration: BoxDecoration(
-          border: _isDragging ? Border.all(color: Colors.blue, width: 2) : null,
-          color: _isDragging ? Colors.blue.withOpacity(0.1) : Colors.white,
+          border: _isDragging ? Border.all(color: Color(0xFF0A84FF), width: 2) : null,
+          color: _isDragging ? const Color(0xFF0A84FF).withOpacity(0.1) : const Color(0xFF1E1E1E),
         ),
         child: _buildContent(),
       ),
@@ -322,6 +349,7 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A84FF), foregroundColor: Colors.white),
               onPressed: () {
                 setState(() {
                   _errorMessage = '';
@@ -341,23 +369,29 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+            decoration: const BoxDecoration(
+              color: Color(0xFF2D2D2D),
+              border: Border(bottom: BorderSide(color: Color(0xFF3D3D3D))),
             ),
             child: Row(
               children: [
-                Icon(_selectedFile!.extension == '.md' ? Icons.article : Icons.description, color: Colors.blue),
+                Icon(
+                  _selectedFile!.extension == '.md' ? Icons.article : Icons.description,
+                  color: const Color(0xFF0A84FF),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_selectedFile!.fileName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        _selectedFile!.fileName,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         '最后修改：${_formatDateTime(_selectedFile!.lastModified)}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFFA0A0A0)),
                       ),
                     ],
                   ),
@@ -375,14 +409,22 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.cloud_upload_outlined, size: 100, color: _isDragging ? Colors.blue : Colors.grey),
+          Icon(
+            Icons.cloud_upload_outlined,
+            size: 100,
+            color: _isDragging ? const Color(0xFF0A84FF) : const Color(0xFF8E8E93),
+          ),
           const SizedBox(height: 24),
           Text(
             _isDragging ? '松开鼠标放置文件' : '请拖入文件',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _isDragging ? Colors.blue : Colors.grey),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: _isDragging ? const Color(0xFF0A84FF) : const Color(0xFF8E8E93),
+            ),
           ),
           const SizedBox(height: 16),
-          Text('支持的格式：TXT、MD', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+          const Text('支持的格式：TXT、MD', style: TextStyle(fontSize: 16, color: Color(0xFFA0A0A0))),
         ],
       ),
     );
@@ -404,34 +446,41 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
       selectable: true,
       padding: const EdgeInsets.all(24),
       styleSheet: MarkdownStyleSheet(
-        h1: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.black87),
-        h2: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
-        h3: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-        h4: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-        h5: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-        h6: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-        p: const TextStyle(fontSize: 16, height: 1.7, color: Colors.black87),
-        code: TextStyle(
-          backgroundColor: Colors.grey.shade200,
+        h1: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+        h2: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+        h3: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+        h4: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+        h5: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+        h6: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+        p: const TextStyle(fontSize: 16, height: 1.7, color: Color(0xFFE5E5E5)),
+        code: const TextStyle(
+          backgroundColor: Color(0xFF3D3D3D),
           fontFamily: 'Courier',
           fontSize: 14,
-          color: Colors.red.shade700,
+          color: Color(0xFFFF6B6B),
         ),
-        codeblockDecoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+        codeblockDecoration: const BoxDecoration(
+          color: Color(0xFF2D2D2D),
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+          border: Border.fromBorderSide(BorderSide(color: Color(0xFF3D3D3D))),
         ),
-        blockquote: const TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
+        blockquote: const TextStyle(color: Color(0xFFA0A0A0), fontStyle: FontStyle.italic),
         blockquoteDecoration: BoxDecoration(
-          color: Colors.blue.shade50,
+          color: const Color(0xFF0A84FF).withOpacity(0.1),
           borderRadius: BorderRadius.circular(4),
-          border: Border(left: BorderSide(color: Colors.blue.shade300, width: 4)),
+          border: const Border(left: BorderSide(color: Color(0xFF0A84FF), width: 4)),
         ),
-        listBullet: const TextStyle(color: Colors.black87),
-        tableHead: const TextStyle(fontWeight: FontWeight.bold),
-        tableBody: const TextStyle(fontSize: 14),
-        tableBorder: TableBorder.all(color: Colors.grey.shade300),
+        listBullet: const TextStyle(color: Color(0xFFE5E5E5)),
+        tableHead: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
+        tableBody: const TextStyle(fontSize: 14, color: Color(0xFFE5E5E5)),
+        tableBorder: const TableBorder(
+          top: BorderSide(color: Color(0xFF3D3D3D)),
+          bottom: BorderSide(color: Color(0xFF3D3D3D)),
+          left: BorderSide(color: Color(0xFF3D3D3D)),
+          right: BorderSide(color: Color(0xFF3D3D3D)),
+          horizontalInside: BorderSide(color: Color(0xFF3D3D3D)),
+          verticalInside: BorderSide(color: Color(0xFF3D3D3D)),
+        ),
       ),
     );
   }
@@ -441,7 +490,7 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
       padding: const EdgeInsets.all(24),
       child: SelectableText(
         _selectedFile!.content,
-        style: const TextStyle(fontSize: 16, height: 1.6, fontFamily: 'Courier', color: Colors.black87),
+        style: const TextStyle(fontSize: 16, height: 1.6, fontFamily: 'Courier', color: Color(0xFFE5E5E5)),
       ),
     );
   }
