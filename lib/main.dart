@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:path/path.dart' as path;
 import 'package:cross_file/cross_file.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,6 +35,7 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
   String _fileContent = '';
   String _fileName = '';
   String _errorMessage = '';
+  String _fileExtension = '';
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +89,7 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
                   _errorMessage = '';
                   _fileContent = '';
                   _fileName = '';
+                  _fileExtension = '';
                 });
               },
               child: const Text('重新开始'),
@@ -108,7 +111,7 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.description, color: Colors.blue),
+                Icon(_fileExtension == '.md' ? Icons.article : Icons.description, color: Colors.blue),
                 const SizedBox(width: 8),
                 Expanded(child: Text(_fileName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
                 IconButton(
@@ -118,18 +121,14 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
                       _fileContent = '';
                       _fileName = '';
                       _errorMessage = '';
+                      _fileExtension = '';
                     });
                   },
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: SelectableText(_fileContent, style: const TextStyle(fontSize: 14, height: 1.5)),
-            ),
-          ),
+          Expanded(child: _buildFileContentWidget()),
         ],
       );
     }
@@ -148,6 +147,53 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
           Text('支持的格式：TXT、MD', style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
         ],
       ),
+    );
+  }
+
+  Widget _buildFileContentWidget() {
+    if (_fileExtension == '.md') {
+      return _buildMarkdownContent();
+    } else {
+      return _buildTextContent();
+    }
+  }
+
+  Widget _buildMarkdownContent() {
+    return Markdown(
+      data: _fileContent,
+      selectable: true,
+      padding: const EdgeInsets.all(16),
+      styleSheet: MarkdownStyleSheet(
+        h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+        h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+        h3: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+        h4: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+        h5: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+        h6: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+        p: const TextStyle(fontSize: 14, height: 1.6, color: Colors.black87),
+        code: TextStyle(backgroundColor: Colors.grey.shade200, fontFamily: 'Courier', fontSize: 13),
+        codeblockDecoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        blockquote: const TextStyle(color: Colors.black54, fontStyle: FontStyle.italic),
+        blockquoteDecoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          border: Border(left: BorderSide(color: Colors.blue.shade300, width: 4)),
+        ),
+        listBullet: const TextStyle(color: Colors.black87),
+        tableHead: const TextStyle(fontWeight: FontWeight.bold),
+        tableBody: const TextStyle(fontSize: 14),
+        tableBorder: TableBorder.all(color: Colors.grey.shade300),
+      ),
+    );
+  }
+
+  Widget _buildTextContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: SelectableText(_fileContent, style: const TextStyle(fontSize: 14, height: 1.5, fontFamily: 'Courier')),
     );
   }
 
@@ -183,6 +229,7 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
       setState(() {
         _fileContent = content;
         _fileName = path.basename(file.path);
+        _fileExtension = path.extension(file.path).toLowerCase();
         _errorMessage = '';
       });
     } catch (e) {
