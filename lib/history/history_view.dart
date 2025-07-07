@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:io';
 
 /// 《代码文档》
 /// 文件历史记录项数据模型
@@ -149,6 +150,32 @@ class _HistoryViewState extends State<HistoryView> {
     }
   }
 
+  /// 在Finder中显示文件
+  Future<void> _showInFinder(String filePath) async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.run('open', ['-R', filePath]);
+      } else if (Platform.isWindows) {
+        await Process.run('explorer', ['/select,', filePath]);
+      } else if (Platform.isLinux) {
+        // 尝试使用不同的文件管理器
+        try {
+          await Process.run('nautilus', ['--select', filePath]);
+        } catch (e) {
+          try {
+            await Process.run('dolphin', ['--select', filePath]);
+          } catch (e) {
+            // 如果都失败，则打开包含该文件的目录
+            final directory = Directory(filePath).parent.path;
+            await Process.run('xdg-open', [directory]);
+          }
+        }
+      }
+    } catch (e) {
+      widget.onError('无法在文件管理器中显示文件：$e');
+    }
+  }
+
   /// 格式化时间显示
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
@@ -266,6 +293,8 @@ class _HistoryViewState extends State<HistoryView> {
               onSelected: (value) {
                 if (value == 'delete') {
                   _removeFileFromHistory(fileItem.id);
+                } else if (value == 'show_in_finder') {
+                  _showInFinder(fileItem.filePath);
                 }
               },
               itemBuilder:
@@ -277,6 +306,16 @@ class _HistoryViewState extends State<HistoryView> {
                           Icon(Icons.delete_outline, size: 16, color: Colors.red),
                           SizedBox(width: 8),
                           Text('删除', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'show_in_finder',
+                      child: Row(
+                        children: [
+                          Icon(Icons.folder_outlined, size: 16, color: Color(0xFF0A84FF)),
+                          SizedBox(width: 8),
+                          Text('在Finder中显示', style: TextStyle(color: Color(0xFF0A84FF))),
                         ],
                       ),
                     ),
