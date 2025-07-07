@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../history/history_view.dart';
+import 'translation_service.dart';
 
 /// 《代码文档》翻译视图组件
 ///
@@ -57,49 +56,14 @@ class _TranslatorViewState extends State<TranslatorView> {
     });
 
     try {
-      final response = await http
-          .post(
-            Uri.parse('https://cerebras-proxy.brain.loocaa.com:1443/v1/chat/completions'),
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer DlJYSkMVj1x4zoe8jZnjvxfHG6z5yGxK',
-            },
-            body: json.encode({
-              "model": "llama-3.3-70b",
-              "messages": [
-                {
-                  "role": "system",
-                  "content": "你是一个资深的中英文翻译官，你非常擅长把英文内容翻译为优雅的中文表达。\n现在，你需要根据用户发送的内容，进行翻译，只翻译用户发的内容，不要增加任何额外的文字",
-                },
-                {"role": "user", "content": widget.selectedFile!.content},
-              ],
-            }),
-          )
-          .timeout(const Duration(seconds: 60));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final translatedText = data['choices'][0]['message']['content'];
-        setState(() {
-          _translatedContent = translatedText;
-          _isTranslating = false;
-        });
-      } else {
-        setState(() {
-          _translationError = '翻译失败：HTTP ${response.statusCode}';
-          _isTranslating = false;
-        });
-      }
+      final translatedText = await TranslationService.translateText(widget.selectedFile!.content);
+      setState(() {
+        _translatedContent = translatedText;
+        _isTranslating = false;
+      });
     } catch (e) {
       setState(() {
-        if (e.toString().contains('SocketException') || e.toString().contains('Connection failed')) {
-          _translationError = '网络连接失败，请检查网络设置和防火墙配置';
-        } else if (e.toString().contains('TimeoutException')) {
-          _translationError = '请求超时，请稍后重试';
-        } else {
-          _translationError = '翻译失败：$e';
-        }
+        _translationError = e.toString();
         _isTranslating = false;
       });
     }

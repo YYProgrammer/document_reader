@@ -4,6 +4,8 @@ import 'package:path/path.dart' as path;
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../history/history_view.dart';
+import 'selectable_text_with_translation.dart';
+import 'markdown_with_translation.dart';
 
 /*《代码文档》
  * FileView - 文档阅读器中的中间原文件内容阅读面板
@@ -218,9 +220,9 @@ class _FileViewState extends State<FileView> {
   }
 
   Widget _buildMarkdownContent() {
-    return Markdown(
+    return MarkdownWithTranslation(
+      key: ValueKey('markdown_${widget.selectedFile!.id}'),
       data: widget.selectedFile!.content,
-      selectable: true,
       padding: const EdgeInsets.all(24),
       styleSheet: MarkdownStyleSheet(
         h1: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFFFFFFF)),
@@ -265,8 +267,9 @@ class _FileViewState extends State<FileView> {
   Widget _buildTextContent() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
-      child: SelectableText(
-        widget.selectedFile!.content,
+      child: SelectableTextWithTranslation(
+        key: ValueKey('text_${widget.selectedFile!.id}'),
+        text: widget.selectedFile!.content,
         style: const TextStyle(fontSize: 16, height: 1.6, fontFamily: 'Courier', color: Color(0xFFE5E5E5)),
       ),
     );
