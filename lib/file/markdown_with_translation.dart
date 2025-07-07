@@ -137,12 +137,49 @@ class _MarkdownWithTranslationState extends State<MarkdownWithTranslation> {
           if (selection != null) {
             final selectedText = selection.plainText;
             if (selectedText.trim().isNotEmpty) {
-              // 获取当前选择位置
+              // 获取选中文本的实际位置
               final renderObject = context.findRenderObject() as RenderBox?;
               if (renderObject != null) {
-                // 使用选择区域的大概位置
-                final size = renderObject.size;
-                final position = renderObject.localToGlobal(Offset(size.width * 0.5, size.height * 0.3));
+                // 计算选中文本的相对位置
+                Offset position;
+                try {
+                  // 通过查找选中文本在原文中的位置来估算
+                  final totalLength = widget.data.length;
+                  final selectedTextIndex = widget.data.indexOf(selectedText);
+
+                  if (selectedTextIndex != -1) {
+                    // 计算相对位置
+                    final relativePosition = selectedTextIndex / totalLength;
+
+                    // 估算垂直位置
+                    final averageLineHeight = 20.0; // Markdown的平均行高
+                    final estimatedLine = (selectedTextIndex / 50).floor(); // 假设每行50个字符
+                    final estimatedY = estimatedLine * averageLineHeight;
+
+                    // 计算水平位置
+                    final estimatedX = renderObject.size.width * (relativePosition * 0.8 + 0.1);
+
+                    position = renderObject.localToGlobal(Offset(estimatedX, estimatedY - 60));
+
+                    // 确保悬浮窗不会超出屏幕边界
+                    final screenSize = MediaQuery.of(context).size;
+                    final clampedX = position.dx.clamp(10.0, screenSize.width - 320.0);
+                    final clampedY = position.dy.clamp(10.0, screenSize.height - 200.0);
+
+                    position = Offset(clampedX, clampedY);
+                  } else {
+                    // 如果找不到选中文本，使用中心位置
+                    position = renderObject.localToGlobal(
+                      Offset(renderObject.size.width * 0.5, renderObject.size.height * 0.3),
+                    );
+                  }
+                } catch (e) {
+                  // 如果获取精确位置失败，使用中心位置
+                  position = renderObject.localToGlobal(
+                    Offset(renderObject.size.width * 0.5, renderObject.size.height * 0.3),
+                  );
+                }
+
                 _showTranslationPopup(selectedText, position);
               }
             }

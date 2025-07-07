@@ -179,12 +179,47 @@ class _SelectableTextWithTranslationState extends State<SelectableTextWithTransl
             if (selection != null && !selection.isCollapsed) {
               final selectedText = selection.textInside(widget.text);
               if (selectedText.trim().isNotEmpty) {
-                // 获取当前鼠标位置（使用一个合理的默认位置）
+                // 获取选中文本的实际位置
                 final renderObject = context.findRenderObject() as RenderBox?;
                 if (renderObject != null) {
-                  // 使用选择区域的大概位置
-                  final size = renderObject.size;
-                  final position = renderObject.localToGlobal(Offset(size.width * 0.5, size.height * 0.3));
+                  // 计算选中文本在文本中的相对位置
+                  Offset position;
+                  try {
+                    // 计算选中文本在整个文本中的相对位置
+                    final totalLength = widget.text.length;
+                    final selectionStart = selection.start;
+                    final selectionEnd = selection.end;
+                    final selectionMiddle = (selectionStart + selectionEnd) / 2;
+
+                    // 根据文本位置计算相对位置（0-1之间）
+                    final relativePosition = selectionMiddle / totalLength;
+
+                    // 估算选中文本的垂直位置
+                    final averageLineHeight = (widget.style?.fontSize ?? 16) * (widget.style?.height ?? 1.6);
+                    final estimatedLine = (selectionMiddle / (renderObject.size.width / averageLineHeight)).floor();
+                    final estimatedY = estimatedLine * averageLineHeight;
+
+                    // 计算水平位置（使用相对位置）
+                    final estimatedX = renderObject.size.width * (relativePosition * 0.8 + 0.1); // 避免太靠边
+
+                    // 转换为全局坐标，并在选中文本上方显示
+                    position = renderObject.localToGlobal(
+                      Offset(estimatedX, estimatedY - 60), // 在估算位置上方60像素
+                    );
+
+                    // 确保悬浮窗不会超出屏幕边界
+                    final screenSize = MediaQuery.of(context).size;
+                    final clampedX = position.dx.clamp(10.0, screenSize.width - 320.0); // 320是悬浮窗大概宽度
+                    final clampedY = position.dy.clamp(10.0, screenSize.height - 200.0); // 200是悬浮窗大概高度
+
+                    position = Offset(clampedX, clampedY);
+                  } catch (e) {
+                    // 如果获取精确位置失败，使用中心位置
+                    position = renderObject.localToGlobal(
+                      Offset(renderObject.size.width * 0.5, renderObject.size.height * 0.3),
+                    );
+                  }
+
                   _handleTextSelection(selectedText, position);
                 }
               }
