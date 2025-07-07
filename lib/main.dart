@@ -127,8 +127,9 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
 
   // 处理错误消息
   void _handleError(String errorMessage) {
-    // 错误处理现在在 FileView 中处理
-    // 这里可以添加全局错误处理逻辑，如果需要的话
+    // 错误处理现在主要在各个组件内部处理
+    // 保留这个方法以备将来需要全局错误处理
+    debugPrint('Error: $errorMessage');
   }
 
   @override

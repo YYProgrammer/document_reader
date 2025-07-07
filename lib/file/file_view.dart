@@ -282,7 +282,6 @@ class _FileViewState extends State<FileView> {
       setState(() {
         _errorMessage = '没有检测到文件';
       });
-      widget.onError('没有检测到文件');
       return;
     }
 
@@ -293,7 +292,6 @@ class _FileViewState extends State<FileView> {
       setState(() {
         _errorMessage = '不支持的文件格式。请拖入 TXT 或 MD 文件。';
       });
-      widget.onError('不支持的文件格式。请拖入 TXT 或 MD 文件。');
       return;
     }
 
@@ -320,7 +318,6 @@ class _FileViewState extends State<FileView> {
       setState(() {
         _errorMessage = '读取文件失败：$e';
       });
-      widget.onError('读取文件失败：$e');
     }
   }
 }

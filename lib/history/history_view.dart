@@ -134,7 +134,6 @@ class _HistoryViewState extends State<HistoryView> {
       }
     });
     _saveFileHistory();
-    widget.onFileAdded(fileItem);
   }
 
   /// 删除文件历史记录
@@ -232,7 +231,7 @@ class _HistoryViewState extends State<HistoryView> {
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF0A84FF).withOpacity(0.2) : Colors.transparent,
+            color: isSelected ? const Color(0xFF0A84FF).withValues(alpha: 0.2) : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: ListTile(
@@ -254,7 +253,7 @@ class _HistoryViewState extends State<HistoryView> {
               _formatDateTime(fileItem.lastModified),
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected ? const Color(0xFF0A84FF).withOpacity(0.8) : const Color(0xFFA0A0A0),
+                color: isSelected ? const Color(0xFF0A84FF).withValues(alpha: 0.8) : const Color(0xFFA0A0A0),
               ),
             ),
             trailing: PopupMenuButton<String>(

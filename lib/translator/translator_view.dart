@@ -231,7 +231,7 @@ class _TranslatorViewState extends State<TranslatorView> {
                   ),
                   blockquote: const TextStyle(color: Color(0xFFA0A0A0), fontStyle: FontStyle.italic),
                   blockquoteDecoration: BoxDecoration(
-                    color: const Color(0xFF0A84FF).withOpacity(0.1),
+                    color: const Color(0xFF0A84FF).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                     border: const Border(left: BorderSide(color: Color(0xFF0A84FF), width: 4)),
                   ),
