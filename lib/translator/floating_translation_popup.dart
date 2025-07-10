@@ -88,8 +88,8 @@ class _FloatingTranslationPopupState extends State<FloatingTranslationPopup> wit
     });
     // 设置语言
     _flutterTts.setLanguage('zh-CN');
-    // 设置语速
-    _flutterTts.setSpeechRate(0.6);
+    // 设置语速（0.4 = 更慢的语速，便于学习和理解）
+    _flutterTts.setSpeechRate(0.4);
     // 设置音量
     _flutterTts.setVolume(1.0);
     // 设置音调
