@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'translation_service.dart';
 
 /// 《代码文档》悬浮翻译弹窗组件
@@ -34,6 +35,8 @@ class _FloatingTranslationPopupState extends State<FloatingTranslationPopup> wit
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
+  late FlutterTts _flutterTts;
+  bool _isPlaying = false;
 
   @override
   void initState() {
@@ -50,12 +53,47 @@ class _FloatingTranslationPopupState extends State<FloatingTranslationPopup> wit
 
     _animationController.forward();
     _translateText();
+    _initializeTts();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _flutterTts.stop();
     super.dispose();
+  }
+
+  /// 初始化TTS
+  void _initializeTts() {
+    _flutterTts = FlutterTts();
+    _flutterTts.setStartHandler(() {
+      setState(() {
+        _isPlaying = true;
+      });
+    });
+    _flutterTts.setCompletionHandler(() {
+      setState(() {
+        _isPlaying = false;
+      });
+    });
+    _flutterTts.setErrorHandler((message) {
+      setState(() {
+        _isPlaying = false;
+      });
+    });
+    _flutterTts.setCancelHandler(() {
+      setState(() {
+        _isPlaying = false;
+      });
+    });
+    // 设置语言
+    _flutterTts.setLanguage('zh-CN');
+    // 设置语速
+    _flutterTts.setSpeechRate(0.6);
+    // 设置音量
+    _flutterTts.setVolume(1.0);
+    // 设置音调
+    _flutterTts.setPitch(1.0);
   }
 
   /// 翻译选中的文本
@@ -84,6 +122,15 @@ class _FloatingTranslationPopupState extends State<FloatingTranslationPopup> wit
           _isTranslating = false;
         });
       }
+    }
+  }
+
+  /// 播放选中的文本
+  void _playSelectedText() async {
+    if (_isPlaying) {
+      await _flutterTts.stop();
+    } else {
+      await _flutterTts.speak(widget.selectedText);
     }
   }
 
@@ -129,7 +176,9 @@ class _FloatingTranslationPopupState extends State<FloatingTranslationPopup> wit
         decoration: BoxDecoration(
           color: const Color(0xFF2D2D2D),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
           border: Border.all(color: const Color(0xFF3D3D3D), width: 1),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [_buildHeader(), _buildContent()]),
@@ -151,6 +200,15 @@ class _FloatingTranslationPopupState extends State<FloatingTranslationPopup> wit
           const SizedBox(width: 8),
           const Text('翻译', style: TextStyle(color: Color(0xFFFFFFFF), fontSize: 14, fontWeight: FontWeight.bold)),
           const Spacer(),
+          // 播放按钮
+          IconButton(
+            onPressed: _playSelectedText,
+            icon: Icon(_isPlaying ? Icons.stop : Icons.play_arrow, color: const Color(0xFF0A84FF), size: 16),
+            tooltip: _isPlaying ? '停止播放' : '播放原文',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+          ),
+          const SizedBox(width: 4),
           if (_translatedText.isNotEmpty)
             IconButton(
               onPressed: _copyTranslation,
